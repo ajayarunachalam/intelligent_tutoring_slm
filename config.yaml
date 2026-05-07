@@ -1,0 +1,98 @@
+# config.yaml
+# ─────────────────────────────────────────────────────────────────────────
+# Tutoring SLM — DGX Spark PoC Configuration
+# Edit this file to customise the pipeline without touching code.
+# ─────────────────────────────────────────────────────────────────────────
+
+# ── Models ────────────────────────────────────────────────────────────────
+models:
+  # Ollama model names (must be pulled on DGX Spark)
+  ollama_fast:     "gemma4:latest"    # 9B — fast iteration & demo
+  ollama_quality:  "gemma4:31b"       # 31B — best tutoring quality
+
+  # HuggingFace model IDs for fine-tuning
+  # (must match the underlying Gemma version in Ollama)
+  hf_base_fast:    "google/gemma-2-9b-it"
+  hf_base_quality: "google/gemma-3-27b-it"
+
+# ── Dataset ───────────────────────────────────────────────────────────────
+dataset:
+  hf_id:          "eth-nlped/mathdial"
+  cache_dir:      "./data/mathdial"
+  processed_dir:  "./data/processed"
+  train_size:     2400              # max training examples (full = 2400)
+  test_size:      100               # max test examples
+  quick_train:    150               # for --quick mode
+  quick_test:     30
+
+# ── Preprocessing ─────────────────────────────────────────────────────────
+preprocessing:
+  max_context_turns:    10
+  min_teacher_turns:    2
+  include_dialog_acts:  true
+  gemma_format:         true
+
+# ── Fine-tuning (QLoRA) ───────────────────────────────────────────────────
+training:
+  # LoRA
+  lora_r:               16
+  lora_alpha:           32
+  lora_dropout:         0.05
+  lora_target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+
+  # Quantisation
+  use_4bit:             true
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_quant_type:    "nf4"
+
+  # Hyperparameters (tuned for DGX Spark 128GB unified memory)
+  epochs:               3
+  batch_size:           4
+  grad_accumulation:    4           # effective batch = 4 × 4 = 16
+  learning_rate:        0.0002
+  lr_scheduler:         "cosine"
+  warmup_ratio:         0.05
+  max_seq_length:       2048
+  weight_decay:         0.01
+  bf16:                 true        # Blackwell native BF16
+  gradient_checkpointing: true
+
+  # Checkpointing
+  eval_steps:           100
+  save_steps:           200
+  logging_steps:        25
+
+  # Output
+  checkpoint_dir:       "./checkpoints/tutoring_slm"
+  adapter_dir:          "./models/tutoring_slm_adapter"
+  final_model_dir:      "./models/tutoring_slm_final"
+
+# ── Inference ─────────────────────────────────────────────────────────────
+inference:
+  temperature:          0.7
+  top_p:               0.9
+  max_tokens:          300
+  safety_check:         true
+  mastery_tracking:     true
+  # Mastery reveal threshold
+  max_turns_before_reveal:  12
+  min_corrections_before_reveal: 3
+
+# ── Evaluation ────────────────────────────────────────────────────────────
+evaluation:
+  mode:                 "both"      # static | dynamic | both
+  max_examples:         50
+  results_dir:          "./results"
+
+# ── Logging ───────────────────────────────────────────────────────────────
+logging:
+  level:                "INFO"
+  report_to:            "none"      # "wandb" to enable Weights & Biases
+  wandb_project:        "tutoring-slm-dgx-spark"

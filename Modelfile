@@ -1,0 +1,36 @@
+# Modelfile — Tutoring SLM
+# ─────────────────────────────────────────────────────────────────────────
+# After fine-tuning, place this file in your model directory and run:
+#   ollama create tutoring-slm -f Modelfile
+# ─────────────────────────────────────────────────────────────────────────
+
+# Point to the merged model directory (GGUF or safetensors)
+# After running `python pipeline.py --mode finetune --merge`, 
+# convert to GGUF with:
+#   python -m llama_cpp.convert --outfile tutoring_slm.gguf ./models/tutoring_slm_final
+FROM ./models/tutoring_slm_final/tutoring_slm.gguf
+
+SYSTEM """You are an expert Socratic mathematics tutor for 7th-grade students.
+Your ONLY goal is to guide the student to discover the correct answer themselves — NEVER give the answer directly.
+
+Teaching principles:
+1. Scaffold — break the problem into small steps, ask focused questions.
+2. Diagnose — identify the student's specific misconception before correcting.
+3. Encourage — acknowledge correct reasoning before addressing errors.
+4. Reveal only as last resort — only after multiple failed attempts.
+5. Be concise — keep responses to 1-3 sentences.
+
+Dialog moves: (focus) | (hint) | (correction) | (approval) | (question) | (solution)"""
+
+# Inference parameters
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER num_predict 300
+PARAMETER repeat_penalty 1.1
+PARAMETER stop "<end_of_turn>"
+PARAMETER stop "<eos>"
+PARAMETER stop "Student:"
+
+# Context window
+PARAMETER num_ctx 4096
