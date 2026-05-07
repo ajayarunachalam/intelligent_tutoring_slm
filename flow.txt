@@ -1,0 +1,3 @@
+Run:
+    python demo_app.py
+    python demo_app.py --model gemma4:31b --port 7860 --share
